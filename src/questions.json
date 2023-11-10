@@ -1,0 +1,46 @@
+[
+{
+    "id": 1,
+    "question": "Qual é o nome do protagonista da trilogia original de Star Wars?",
+    "options": [
+      { "id": "A", "text": "Darth Vader", "correct": false },
+      { "id": "B", "text": "Obi-Wan Kenobi" , "correct": false},
+      { "id": "C", "text": "Han Solo", "correct": false  },
+      { "id": "D", "text": "Luke Skywalker", "correct": true }
+    ],
+    "score": 10
+  },
+  {
+    "id": 2,
+    "question": "Qual é o nome da princesa de Alderaan?",
+    "options": [
+      { "id": "A", "text": "Leia Organa", "correct": true },
+      { "id": "B", "text": "Padmé Amidala", "correct": false },
+      { "id": "C", "text": "Rey", "correct": false },
+      { "id": "D", "text": "Ahsoka Tano", "correct": false }
+    ],
+    "score": 5
+  },
+  {
+      "id": 3,
+      "question": "Qual planeta natal de Darth Vader?",
+      "options": [
+        { "id": "A", "text": "Tatooine", "correct": false },
+        { "id": "B", "text": "Endor", "correct": false },
+        { "id": "C", "text": "Coruscant", "correct": true },
+        { "id": "D", "text": "Naboo", "correct": false }
+      ],
+      "score": 5
+    },
+    {
+      "id": 4,
+      "question": "Quem é o mestre Jedi de Anakin Skywalker?",
+      "options": [
+        { "id": "A", "text": "Yoda", "correct": false },
+        { "id": "B", "text": "Mace Windu", "correct": false },
+        { "id": "C", "text": "Qui-Gon Jinn", "correct": false },
+        { "id": "D", "text": "Obi-Wan Kenobi", "correct": true }
+      ],
+      "score": 10
+    }
+]
