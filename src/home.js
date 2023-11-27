@@ -7,14 +7,16 @@ export default function Home() {
   const navigation = useNavigation();
 
   const handleJogarPress = () => {
-    // Verifica se o nome não está vazio
     if (nome.trim() === '') {
       alert('Por favor, insira seu nome antes de jogar!');
     } else {
-      // Navega para a tela 'quiz' passando o nome como parâmetro
       navigation.navigate('Quiz', { nome });
     }
   };  
+
+  const handleVerRankingPress = () => {
+    navigation.navigate('Ranking');
+  };
 
   return (
     <View style={styles.container}>
@@ -36,6 +38,9 @@ export default function Home() {
         />
         <TouchableOpacity style={styles.button} onPress={handleJogarPress}>
           <Text style={styles.buttonText}>Jogar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.secondButton} onPress={handleVerRankingPress}>
+          <Text style={styles.buttonText}>Ranking</Text>
         </TouchableOpacity>
       </View>
       <StatusBar style="auto" />
@@ -66,7 +71,7 @@ const styles = StyleSheet.create({
       },
       input: {
         backgroundColor: 'white',
-        width: '40%',  // Largura do TextInput é 100% do inputContainer
+        width: '40%', 
         height: 40,
         borderRadius: 5,
         marginBottom: 10,
@@ -76,7 +81,7 @@ const styles = StyleSheet.create({
       button: {
         backgroundColor: 'blue',
         height: 40,
-        width: '40%',  // Largura do botão é 100% do inputContainer
+        width: '40%',
         borderRadius: 5,
         justifyContent: 'center',
         alignItems: 'center',
@@ -86,4 +91,19 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 18,
       },
+
+      secondButton: {
+        backgroundColor: 'yellow',
+        height: 40,
+        width: '40%',
+        borderRadius: 5,
+        justifyContent: 'center',
+        alignItems: 'center',
+        alignSelf: 'center',
+      },
+      buttonText: {
+        color: 'black',
+        fontSize: 18,
+      },
+
 });
