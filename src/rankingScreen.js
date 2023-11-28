@@ -1,34 +1,25 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, Image } from 'react-native';
-import * as FileSystem from 'expo-file-system';
-import { useFocusEffect } from '@react-navigation/native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
+
 
 const RankingScreen = () => {
   const [ranking, setRanking] = useState([]);
 
-  const loadRankingData = async () => {
-    if (Platform.OS === 'web') {
-      const rankingData = localStorage.getItem('ranking');
-      const rankingArray = rankingData ? JSON.parse(rankingData) : [];
-      setRanking(rankingArray);
-    } else {
-      const fileUri = FileSystem.documentDirectory + 'ranking.json';
+  useEffect(() => {
+    const fetchRanking = async () => {
       try {
-        const rankingData = await FileSystem.readAsStringAsync(fileUri);
-        const rankingArray = JSON.parse(rankingData);
-        setRanking(rankingArray);
-      } catch (error) {
-        console.error('Erro ao carregar o ranking:', error);
-        setRanking([]); // Em caso de erro, definir ranking para um array vazio
-      }
-    }
-  };
+        const response = await fetch('http://localhost:8080/rank/');
+        const data = await response.json();
+        setRanking(data.sort((a, b) => b.pontuacao - a.pontuacao));
 
-  useFocusEffect(
-    React.useCallback(() => {
-      loadRankingData();
-    }, [])
-  );
+      } catch (error) {
+        console.error('Erro ao buscar o ranking:', error);
+      }
+    };
+
+    fetchRanking();
+  }, []);
+
   
   return (
     <View style={styles.container}>
@@ -36,18 +27,19 @@ const RankingScreen = () => {
         source={require('../assets/fundo.jpg')}
         style={styles.backgroundImage}
       />
-      <ScrollView style={styles.contentContainer}>
-        <Image
+      <Text style={styles.title}>Ranking</Text>
+      <ScrollView style={styles.contentContainer}> {/* Use ScrollView do React Native */}
+      <Image
           source={require('../assets/logo.png')}
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={styles.title}>Ranking</Text>
-        {ranking.map((entry, index) => (
-          <View key={index} style={styles.rankingEntry}>
-            <Text style={styles.rankingText}>{entry.nome}: {entry.score}-Pontos.</Text>
+        {ranking.map((entry) => (
+          <View key={entry.id} style={styles.rankingEntry}>
+            <Text style={styles.rankingText}>{entry.nome}: {entry.pontuacao} pontos</Text>
           </View>
         ))}
+        {/* Fim do conteúdo dentro do ScrollView */}
       </ScrollView>
     </View>
   );
@@ -76,7 +68,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: 'white',
+    color: 'black',
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -87,13 +79,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 25,
     marginVertical: 5,
     width: '50%',
-    alignSelf: 'center', 
+    alignSelf: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   rankingText: {
     fontSize: 18,
-    color: 'black', 
+    color: 'black',
   },
 });
 

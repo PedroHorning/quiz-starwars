@@ -1,330 +1,274 @@
-import React, { useState, useEffect } from 'react';
-import { Platform, View, Text, Image, StyleSheet, Button } from 'react-native';
-import questionsData from './questions.json';
-import { RadioButton } from 'react-native-paper';
-import * as FileSystem from 'expo-file-system';
-import { v4 as uuidv4 } from 'uuid';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
-
-function Quiz({ route, navigation }) {
-  const { nome } = route.params;
+function Quiz({ route }) {
+  const { nome } = route.params; // Recebe o nome como parâmetro
+  const [questions, setQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [showQuestions, setShowQuestions] = useState(false);
-  const [selectedAnswer, setSelectedAnswer] = useState(null);
-  const [isCorrectAnswer, setIsCorrectAnswer] = useState(false);
-  const [showNextButton, setShowNextButton] = useState(false);
-  const [quizCompleted, setQuizCompleted] = useState(false);
-  const [ranking, setRanking] = useState([]);
   const [score, setScore] = useState(0);
-  const [timer, setTimer] = useState(15);
-  const [timerActive, setTimerActive] = useState(false);
+  const [selectedAnswer, setSelectedAnswer] = useState(null);
+  const [timer, setTimer] = useState(60);
 
-  const goHome = () => {
-    navigation.navigate('Home');
-  };
-
-  const goToRanking = () => {
-    navigation.navigate('Ranking');
-  };
-  
-  const handleShowQuestions = () => {
-    setCurrentQuestionIndex(0);
-    setSelectedAnswer(null);
-    setIsCorrectAnswer(false);
-    setShowNextButton(false);
-    if (!showQuestions) { 
-      setQuizCompleted(false);
-      setScore(0);
-      startTimer(); 
-    }
-    setShowQuestions(true);
-  };
- 
   useEffect(() => {
-    let interval;
-
-    if (timerActive && timer > 0) {
-      interval = setInterval(() => {
-        setTimer((prevTimer) => prevTimer - 1);
-      }, 1000);
-    }
-
-  if (timer === 0) {
-    setQuizCompleted(true);
-    setTimerActive(false);
-  }
-
-  return () => clearInterval(interval);
-  }, [timer, timerActive]);
-
-  const startTimer = () => {
-    setTimer(20);
-    setTimerActive(true);
-  };
-
-
-  
-  const handleAnswerQuestion = () => {
-    const currentQuestion = questionsData[currentQuestionIndex];
-  
-    if (selectedAnswer === currentQuestion.options.find(option => option.correct)?.id) {
-      setIsCorrectAnswer(true);
-      setScore(score +currentQuestion.score);
-    } else {
-      setIsCorrectAnswer(false);
-    }
-  
-    setShowNextButton(true);
-  };
-  
-  const handleNextQuestion = () => {
-    const nextQuestionIndex = currentQuestionIndex + 1;
-    if (nextQuestionIndex < questionsData.length) {
-      setCurrentQuestionIndex(nextQuestionIndex);
-      setSelectedAnswer(null);
-      setIsCorrectAnswer(false);
-      setShowNextButton(false);
-    } else {
-      setQuizCompleted(true);
-      saveUserToRanking(); 
-    }
-  };
-  
-
-  const saveUserToRanking = async () => {
-    const newRankingEntry = { nome, score };
-    let rankingData = [];
-    let updatedRanking = [];
-  
-    if (Platform.OS === 'web') {
-      rankingData = localStorage.getItem('ranking');
-    } else {
-      const fileUri = FileSystem.documentDirectory + 'ranking.json';
-      try {
-        rankingData = await FileSystem.readAsStringAsync(fileUri);
-      } catch (error) {
-        console.error('Erro ao ler o ranking:', error);
+    const countdown = setInterval(() => {
+      if (timer > 0) {
+        setTimer(timer - 1);
+      } else {
+        console.log('Tempo esgotado! Pontuação final:', score);
+        clearInterval(countdown); 
+        saveScore();
+        navigation.navigate('RankingScreen', { nome, score });
+        return;
       }
-    }
-  
-    const rankingArray = rankingData ? JSON.parse(rankingData) : [];
-    const existingIndex = rankingArray.findIndex((entry) => entry.nome === nome);
-  
-    if (existingIndex !== -1) {
-      // Atualiza o score do jogador existente
-      rankingArray[existingIndex].score = Math.max(rankingArray[existingIndex].score, score);
-    } else {
-      // Adiciona um novo jogador
-      rankingArray.push(newRankingEntry);
-    }
-  
-    updatedRanking = rankingArray.sort((a, b) => b.score - a.score); // Ordena por score decrescente
-  
-    if (Platform.OS === 'web') {
-      localStorage.setItem('ranking', JSON.stringify(updatedRanking));
-    } else {
-      const fileUri = FileSystem.documentDirectory + 'ranking.json';
-      try {
-        await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(updatedRanking));
-      } catch (error) {
-        console.error('Erro ao salvar o ranking:', error);
-      }
-    }
-  
-    setRanking(updatedRanking); // Atualiza o estado local do ranking
-  };
-  
+    }, 1000);
+
+    return () => {
+      clearInterval(countdown); // Limpa o intervalo quando o componente é desmontado
+    };
+  }, [timer, score]);
+
   useEffect(() => {
-    if (quizCompleted) {
-      saveUserToRanking();
-      setTimerActive(false);
-    }
-  }, [quizCompleted]);
+    fetchQuestions();
+  }, []);
 
+  const saveScore = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/rank/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ nome, pontuacao: score }),
+      });
   
-  const optionStyle = (optionId) => {
-    if (showNextButton) {
-      const currentQuestion = questionsData[currentQuestionIndex];
-      const correctOption = currentQuestion.options.find(option => option.correct);
-  
-      if (optionId === correctOption.id) {
-        return {
-          backgroundColor: isCorrectAnswer ? 'green' : '',
-        };
-      } else if (optionId === selectedAnswer) {
-        return {
-          backgroundColor: !isCorrectAnswer ? 'red' : '',
-        };
+      if (response.ok) {
+        console.log('Pontuação salva com sucesso!');
+      } else {
+        console.error('Erro ao salvar pontuação.');
       }
+    } catch (error) {
+      console.error('Erro ao salvar pontuação:', error);
     }
-    return {};
   };
 
-  const handleQuizComplete = () => {
-    setQuizCompleted(true);
-    setTimerActive(false); // Para o cronômetro
-    // ...código existente para finalizar o quiz
+  const fetchQuestions = async () => {
+    try {
+      const response = await fetch('https://swapi.dev/api/people/');
+      const data = await response.json();
+
+      const characterData = data.results.slice(0, 4); // Limitando a 6 personagens para perguntas
+      const shuffledCharacters = shuffleArray(characterData);
+
+      const generatedQuestions = [];
+
+      for (const character of shuffledCharacters) {
+        const films = character.films.length > 0 ? await fetchRandomFilms(character.films) : [];
+        const homeworld = character.homeworld ? await fetchRandomHomeworld(character.homeworld) : [];
+        const vehicles = character.vehicles.length > 0 ? await fetchRandomVehicles(character.vehicles) : [];
+
+        if (films.length > 0) {
+          generatedQuestions.push(createQuestion('filme', films, character.name));
+        }
+
+        if (homeworld.length > 0) {
+          generatedQuestions.push(createQuestion('planeta', homeworld, character.name));
+        }
+
+        if (vehicles.length > 0) {
+          generatedQuestions.push(createQuestion('veículo', vehicles, character.name));
+        }
+      }
+
+      setQuestions(generatedQuestions);
+    } catch (error) {
+      console.error('Erro ao buscar perguntas:', error);
+    }
+  };
+
+  const fetchRandomFilms = async (filmUrls) => {
+    const filmTitles = [];
+    try {
+      const response = await fetch('https://swapi.dev/api/films/');
+      const data = await response.json();
+      const allFilms = data.results.map((film) => film.title);
+      for (const film of allFilms) {
+        if (!filmUrls.includes(film) && filmTitles.length < 3) {
+          filmTitles.push(film);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar filmes:', error);
+    }
+    return filmTitles;
+  };
+
+  const fetchRandomHomeworld = async (homeworldUrl) => {
+    try {
+      const response = await fetch('https://swapi.dev/api/planets/');
+      const data = await response.json();
+      const allPlanets = data.results.map((planet) => planet.name);
+      const filteredPlanets = allPlanets.filter((planet) => planet !== homeworldUrl);
+      return filteredPlanets.slice(0, 3);
+    } catch (error) {
+      console.error('Erro ao buscar planeta:', error);
+      return [];
+    }
+  };
+
+  const fetchRandomVehicles = async (vehicleUrls) => {
+    const vehicleNames = [];
+    try {
+      const response = await fetch('https://swapi.dev/api/vehicles/');
+      const data = await response.json();
+      const allVehicles = data.results.map((vehicle) => vehicle.name);
+      for (const vehicle of allVehicles) {
+        if (!vehicleUrls.includes(vehicle) && vehicleNames.length < 3) {
+          vehicleNames.push(vehicle);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar veículos:', error);
+    }
+    return vehicleNames;
+  };
+
+  const createQuestion = (type, options, characterName) => {
+    const correctOption = { text: `${options[0]}`, correct: true };
+    const shuffledOptions = shuffleArray(options.slice(1, options.length));
+    const otherOptions = shuffledOptions.slice(0, 3).map((option) => ({ text: `${option}`, correct: false }));
+    const allOptions = shuffleArray([correctOption, ...otherOptions]);
+    return {
+      id: questions.length + 1,
+      question: `Qual ${type} está relacionado ao personagem ${characterName}?`,
+      options: allOptions,
+      score: 5,
+    };
+  };
+
+  const shuffleArray = (array) => {
+    const shuffled = array.slice();
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  const currentQuestion = questions[currentQuestionIndex];
+
+  const handleAnswer = (option) => {
+    setSelectedAnswer(option);
+
+    if (option.correct) {
+      setScore(score + currentQuestion.score);
+    }
+
+    setTimeout(() => {
+      if (currentQuestionIndex < questions.length - 1) {
+        setCurrentQuestionIndex(currentQuestionIndex + 1);
+        setSelectedAnswer(null);
+      } else {
+        console.log('Quiz finalizado! Pontuação final:', score);
+      }
+    }, 1500);
+  };
+
+  const renderOptions = () => {
+    return currentQuestion.options.map((option) => (
+      <TouchableOpacity
+        key={option.id}
+        style={[
+          styles.optionButton,
+          selectedAnswer === option ? styles.selectedOption : null,
+        ]}
+        onPress={() => handleAnswer(option)}
+        disabled={selectedAnswer !== null}
+      >
+        <Text style={styles.optionText}>{option.text}</Text>
+      </TouchableOpacity>
+    ));
   };
 
   return (
     <View style={styles.container}>
-    <Image source={require('../assets/fundo.jpg')} style={styles.backgroundImage} />
-    <View style={styles.topContainer}>
-      <Text style={styles.nomeText}>Jogador: {nome}</Text>
-      <Image source={require('../assets/logo.png')} style={styles.logo} resizeMode="contain" />
-      <Text style={styles.scoreText}>SCORE: {score}</Text>
-      <Text style={styles.scoreText}>Timer: {timer}</Text>
-    </View>
-    
-   
-    <View style={styles.centerContainer}>
-    {quizCompleted ? (
-    <View>
-      <Button title="Voltar ao Início" onPress={goHome}  />
-      <Button title="Ver Ranking" onPress={goToRanking} />
-    </View>
-  ) : (        showQuestions ? (
-          <View>
-            <View style={styles.questionContainer}>
-              
-            <Text style={styles.questionText}>
-              {questionsData[currentQuestionIndex].question}
-            </Text>
-            </View>
-            {questionsData[currentQuestionIndex].options.map((option) => (
-              <View key={option.id} style={[styles.optionContainer, optionStyle(option.id)]}>
-                <View style={styles.optionRow}>
-                  <RadioButton
-                    value={option.id}
-                    status={selectedAnswer === option.id ? 'checked' : 'unchecked'}
-                    onPress={() => {
-                      if (!showNextButton) {
-                        setSelectedAnswer(option.id);
-                      }
-                    }}
-                  />
-                  <Text style={styles.optionText}>
-                    {option.text}
-                  </Text>
-                </View>
-                
-              </View>
-            ))}
-            
-            
-            <View style={styles.buttonContainer}>
-            {selectedAnswer !== null && !showNextButton && (
-              <Button title="Responder" onPress={handleAnswerQuestion} style={styles.answerButton}/>
-            )}
-            {showNextButton && (
-              <Button title="Próxima Pergunta" onPress={handleNextQuestion} />
-            )}
-            </View>
+      <Image
+        source={require('../assets/fundo.jpg')}
+        style={styles.backgroundImage}
+      />
+      <View style={styles.timerContainer}>
+        <Text style={styles.timerText}>Tempo: {timer}</Text>
+        <Text style={styles.timerText}>Score: {score}</Text>
+      </View>
+      <View style={styles.centerContainer}>
+      
+        {currentQuestion ? (
+          <View style={styles.questionContainer}>
+            <Text style={styles.questionText}>{currentQuestion.question}</Text>
           </View>
         ) : (
-          <Button title="Iniciar QUIZ" onPress={handleShowQuestions} />
-        )
-      )}
+          <Text style={styles.questionText}>Carregando perguntas...</Text>
+        )}
+        <View style={styles.optionsContainer}>
+          {currentQuestion && renderOptions()}
+        </View>
+      </View>
     </View>
-  </View>
-  
-
-);
+  );
 }
 
+// Estilos
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'black',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   backgroundImage: {
     position: 'absolute',
     width: '100%',
     height: '100%',
   },
-  topContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 20,
+  timerContainer: {
+    alignItems: 'flex-end',
+    marginTop: 20,
+    marginRight: 20,
+  },
+  timerText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFF00',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  nomeText: {
-    color: 'white',
-    fontSize: 25,
-  },
-  scoreText: {
-    color: 'white',
-    fontSize: 25,
-  },
-  logo: {
-    width: 300,
-    height: 300,
-    marginBottom: 0,
-  },
-  questionText: {
-    color: 'white',
-    fontSize: 20,
-    marginBottom: 20,
-  },
-  optionContainer: {
-    marginBottom: 10,
-    padding: 3,
-  },
-  optionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  optionText: {
-    color: 'white',
-    fontSize: 16,
-    marginLeft: 10,
-  },
-  correctAnswerText: {
-    color: 'white',
-    fontSize: 18,
-    marginTop: 10,
-  },
-  buttonContainer: {
-    marginTop: -10, 
+    paddingHorizontal: 20,
   },
   questionContainer: {
     marginBottom: 20,
   },
-  answerButton: {
-    marginTop: 40, 
-    width: 150, 
-    height: 30, 
-  },
-
-  rankingTitle: {
-    color: 'white',
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginTop: 20,
-  },
-  rankingEntry: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: 'gray',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    marginVertical: 5,
-  },
-  rankingText: {
-    color: 'white',
+  questionText: {
     fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    color: '#FFFF00',
   },
-  timerText: {
-    color: 'white',
-    fontSize: 25,
+  optionsContainer: {
+    width: '100%',
   },
-  
-
-  });
+  optionButton: {
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    marginVertical: 5,
+    borderRadius: 5,
+  },
+  optionText: {
+    fontSize: 16,
+  },
+  selectedOption: {
+    backgroundColor: 'lightblue',
+  },
+});
 
 export default Quiz;
